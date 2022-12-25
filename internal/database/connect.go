@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	databaseURL     = flag.String("database-url", "postgres://postgres:asgu@2409@localhost:5432/finance?sslmode=disable", "Database URL")
+	databaseURL     = flag.String("database-url", "postgres://postgres:asgu@2409@localhost:5432/postgres?sslmode=disable", "Database URL.")
 	databaseTimeout = flag.Int64("database-timeout-ms", 2000, "")
 )
 
@@ -29,11 +29,16 @@ func Connect() (*sqlx.DB, error) {
 	conn.SetMaxOpenConns(32)
 
 	// Check if database running
-	if err := waitForDB(conn.DB); err != nil {
+	if err := waitForDb(conn.DB); err != nil {
 		return nil, err
 	}
 
-	return conn, nil 
+	// Migrate database schema
+	if err := migrateDb(conn.DB); err != nil {
+		return nil, errors.Wrap(err, "could not migrate database.")
+	}
+
+	return conn, nil
 }
 
 // New creates a new database
@@ -50,11 +55,11 @@ func New() (Database, error) {
 	return d, nil
 }
 
-func waitForDB(conn *sql.DB) error {
+func waitForDb(conn *sql.DB) error {
 	ready := make(chan struct{})
 	go func() {
 		for {
-			if err := conn.Ping(); err != nil {
+			if err := conn.Ping(); err == nil {
 				close(ready)
 				return
 			}

@@ -6,12 +6,14 @@ import (
 	"finance/internal/database"
 	"net/http"
 
+	_ "github.com/lib/pq"
+	"github.com/namsral/flag"
 	"github.com/sirupsen/logrus"
-  _	"github.com/lib/pq"
 )
 
 // Create server object and start
 func main() {
+	flag.Parse()
 
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.WithField("version", config.Version).Debug("Starting server.")
@@ -20,7 +22,9 @@ func main() {
 	db, err := database.New()
 	if err != nil {
 		logrus.WithError(err).Fatal("Error verifying database.")
-	} 
+	}
+
+	logrus.Debug("Database is ready to use.")
 
 	// Create new router
 	router, err := api.NewRouter(db)

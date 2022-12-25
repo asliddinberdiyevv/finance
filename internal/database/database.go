@@ -15,7 +15,6 @@ type database struct {
 	conn *sqlx.DB
 }
 
-
 func (d *database) Close() error {
 	return d.conn.Close()
 }
