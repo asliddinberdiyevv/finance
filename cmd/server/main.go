@@ -1,10 +1,13 @@
 package main
 
 import (
-	"github.com/asliddinberdiyevv/finance/internal/api"
-	"github.com/asliddinberdiyevv/finance/internal/config"
-	"github.com/sirupsen/logrus"
+	"finance/internal/api"
+	"finance/internal/config"
+	"finance/internal/database"
 	"net/http"
+
+	"github.com/sirupsen/logrus"
+  _	"github.com/lib/pq"
 )
 
 // Create server object and start
@@ -13,8 +16,14 @@ func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.WithField("version", config.Version).Debug("Starting server.")
 
+	// Create new database
+	db, err := database.New()
+	if err != nil {
+		logrus.WithError(err).Fatal("Error verifying database.")
+	} 
+
 	// Create new router
-	router, err := api.NewRouter()
+	router, err := api.NewRouter(db)
 	if err != nil {
 		logrus.WithError(err).Fatal("Error building router")
 	}

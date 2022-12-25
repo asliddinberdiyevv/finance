@@ -2,7 +2,7 @@ package v1
 
 import (
 	"encoding/json"
-	"github.com/asliddinberdiyevv/finance/internal/config"
+	"finance/internal/config"
 	"net/http"
 
 	"github.com/sirupsen/logrus"

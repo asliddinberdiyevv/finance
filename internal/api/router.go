@@ -3,11 +3,13 @@ package api
 import (
 	"net/http"
 
-	"github.com/asliddinberdiyevv/finance/internal/api/v1"
+	"finance/internal/api/v1"
+	"finance/internal/database"
+
 	"github.com/gorilla/mux"
 )
 
-func NewRouter() (http.Handler, error) {
+func NewRouter(db database.Database) (http.Handler, error) {
 	router := mux.NewRouter()
 	router.HandleFunc("/version", v1.VersionHanler)
 
