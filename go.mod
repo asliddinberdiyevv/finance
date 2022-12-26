@@ -10,6 +10,7 @@ require (
 	github.com/namsral/flag v1.7.4-pre
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 )
 
 require (
