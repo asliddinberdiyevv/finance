@@ -10,13 +10,22 @@ import (
 // UserID is indentifier for User
 type UserID string
 
-// User is structure represent User object 
+// User is structure represent User object
 type User struct {
 	ID           UserID     `json:"id,omitempty" db:"user_id"`
 	Email        *string    `json:"email" db:"email"`
 	PasswordHash *[]byte    `json:"-" db:"password_hash"`
 	CreatedAt    *time.Time `json:"-" db:"created_at"`
 	DeletedAt    *time.Time `json:"-" db:"deleted_at"`
+}
+
+// Verify all required fields before create or update
+func (u *User) Verify() error {
+	if u.Email == nil || (u.Email != nil && len(*u.Email) == 0) {
+		return errors.New("Email is requered")
+	}
+
+	return nil
 }
 
 // Set Password updates a user's password
