@@ -43,6 +43,7 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusInternalServerError, "Not all fields found", map[string]string{
 			"error": err.Error(),
 		})
+		return
 	}
 
 	hashed, err := models.HashPassword(userParameters.Password)
