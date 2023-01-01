@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// UserAPI - provides REST for Users
 type UserAPI struct {
 	DB database.Database
 }
@@ -34,7 +35,7 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger = logger.WithFields(logrus.Fields{
-		"email": userParameters.Email,
+		"email": *userParameters.Email,
 	})
 
 	if err := userParameters.Verify(); err != nil {
@@ -75,4 +76,40 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	logger.Info("User created")
 
 	utils.WriteJSON(w, http.StatusCreated, createdUser)
+}
+
+func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "users.go -> Login()")
+
+	var credentials models.Credentials
+	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+		logger.WithError(err).Warn("could not decode parametrs")
+		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	logger = logger.WithFields(logrus.Fields{
+		"email": credentials.Email,
+	})
+
+	ctx := r.Context()
+	user, err := api.DB.GetUserByEmail(ctx, credentials.Email)
+	if err != nil {
+		logger.WithError(err).Warn("Error logging in")
+		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
+		return
+	}
+
+	// Checking if password is correct
+	if err := user.CheckPassword(credentials.Password); err != nil {
+		logger.WithError(err).Warn("Error logging in")
+		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
+		return
+	}
+
+	logger.WithField("userID", user.ID).Debug("user logged in")
+
+	utils.WriteJSON(w, http.StatusOK, user)
 }

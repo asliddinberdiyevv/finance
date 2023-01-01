@@ -11,7 +11,8 @@ import (
 // UserDB persist Users.
 type UsersDB interface {
 	CreateUser(ctx context.Context, user *models.User) error
-	GetUserByID(ctx context.Context, userID *models.UserID) (models.User, error)
+	GetUserByID(ctx context.Context, userID *models.UserID) (*models.User, error)
+	GetUserByEmail(ctx context.Context, emial string) (*models.User, error)
 }
 
 var ErrUserExists = errors.New("user with that email exists")
@@ -58,11 +59,26 @@ var getUserByIDQuery = `
 	WHERE user_id = $1;
 `
 
-func (d *database) GetUserByID(ctx context.Context, userID *models.UserID) (models.User, error) {
+func (d *database) GetUserByID(ctx context.Context, userID *models.UserID) (*models.User, error) {
 	var user models.User
 	if err := d.conn.GetContext(ctx, &user, getUserByIDQuery, userID); err != nil {
-		return user, err
+		return nil, err
 	}
 
-	return user, nil
+	return &user, nil
+}
+
+var getUserByEmailQuery = `
+	SELECT user_id, email, password_hash, created_at, deleted_at
+	FROM users 
+	WHERE email = $1;
+`
+
+func (d *database) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	if err := d.conn.GetContext(ctx, &user, getUserByEmailQuery, email); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
