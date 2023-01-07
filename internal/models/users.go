@@ -10,6 +10,9 @@ import (
 // UserID is indentifier for User
 type UserID string
 
+// NilUserID is an empty UserID
+var NilUserID UserID
+
 // User is structure represent User object
 type User struct {
 	ID           UserID     `json:"id,omitempty" db:"user_id"`
