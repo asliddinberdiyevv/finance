@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
+	"finance/internal/api/auth"
 	"finance/internal/api/utils"
+
 	"finance/internal/database"
 	"finance/internal/models"
 	"net/http"
@@ -12,7 +15,9 @@ import (
 
 // UserAPI - provides REST for Users
 type UserAPI struct {
-	DB database.Database
+	DB database.Database // will represent all database interafaces
+
+	Tokens auth.Tokens
 }
 
 type UserParameters struct {
@@ -76,7 +81,8 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("User created")
 
-	utils.WriteJSON(w, http.StatusCreated, createdUser)
+	// utils.WriteJSON(w, http.StatusCreated, createdUser)
+	api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, true)
 }
 
 func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
@@ -112,5 +118,34 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 
 	logger.WithField("userID", user.ID).Debug("user logged in")
 
-	utils.WriteJSON(w, http.StatusOK, user)
+	// utils.WriteJSON(w, http.StatusOK, user)
+	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
+}
+
+type TokenResponse struct {
+	Token string       `json:"token"`
+	User  *models.User `json:"user,omitempty"`
+}
+
+func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWriter, status int, user *models.User, cookie bool) {
+	// Issue token:
+	token, err := api.Tokens.IssueToken(models.Principal{UserID: user.ID})
+	if err != nil {
+		logrus.WithError(err).Warn("Error issuing token.")
+		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
+		return
+	}
+
+	// Write token response:
+	tokenResponse := TokenResponse{
+		Token: token,
+		User:  user,
+	}
+
+	// if cookie {
+		// later
+	// }
+
+	utils.WriteJSON(w, status, tokenResponse)
+
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"finance/internal/api"
+	"finance/internal/api/auth"
 	"finance/internal/config"
 	"finance/internal/database"
 	"net/http"
@@ -18,6 +19,8 @@ func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.WithField("version", config.Version).Debug("Starting server.")
 
+	tokens := auth.NewTokens()
+
 	// Create new database
 	db, err := database.New()
 	if err != nil {
@@ -27,7 +30,7 @@ func main() {
 	logrus.Debug("Database is ready to use.")
 
 	// Create new router
-	router, err := api.NewRouter(db)
+	router, err := api.NewRouter(db, tokens)
 	if err != nil {
 		logrus.WithError(err).Fatal("Error building router")
 	}
