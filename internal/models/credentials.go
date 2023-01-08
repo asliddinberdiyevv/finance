@@ -2,19 +2,22 @@ package models
 
 import "fmt"
 
-// Credentials used in login API
+// * Credentials used in login API
 type Credentials struct {
-	// Username/Password login:
+	// * Username/Password login:
 	Email    string `json:"email"`
 	Password string `json:"password"`
 
-	// In future we will have google and facebook login as well
+	// * In future we will have google and facebook login as well
 }
 
-// Principal is an authenticated entity
+// * Principal is an authenticated entity
 type Principal struct {
-	UserID UserID `json:"userID,omitempty"`
+	UserID `json:"userID,omitempty"`
 }
+
+// * NilPrincipal is an uninitialized Principal
+var NilPrincipal Principal
 
 func (p Principal) String() string {
 	if p.UserID != "" {

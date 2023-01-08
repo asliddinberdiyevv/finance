@@ -12,7 +12,7 @@ import (
 
 var (
 	databaseURL     = flag.String("database-url", "postgres://postgres:asgu@2409@localhost:5432/postgres?sslmode=disable", "Database URL.")
-	databaseTimeout = flag.Int64("database-timeout-ms", 2000, "")
+	databaseTimeout = flag.Int64("database-timeout-ms", 5000, "")
 )
 
 // Connect creates a new database connection
