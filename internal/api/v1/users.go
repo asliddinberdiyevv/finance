@@ -16,8 +16,6 @@ import (
 // UserAPI - provides REST for Users
 type UserAPI struct {
 	DB database.Database // will represent all database interafaces
-
-	Tokens auth.Tokens
 }
 
 type UserParameters struct {
@@ -68,15 +66,18 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	if err := api.DB.CreateUser(ctx, newUser); err == database.ErrUserExists {
 		logger.WithError(err).Warn("User already exists")
 		utils.WriteError(w, http.StatusConflict, "User already exists", nil)
+		return
 	} else if err != nil {
 		logger.WithError(err).Warn("Error creating user")
 		utils.WriteError(w, http.StatusConflict, "Error creating user", nil)
+		return
 	}
 
 	createdUser, err := api.DB.GetUserByID(ctx, &newUser.ID)
 	if err != nil {
 		logger.WithError(err).Warn("Error creating user")
 		utils.WriteError(w, http.StatusConflict, "Error creating user", nil)
+		return
 	}
 
 	logger.Info("User created")
@@ -122,15 +123,31 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
 }
 
+func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "users.go -> Get()")
+	principal := auth.GetPrincipal(r)
+
+	ctx := r.Context()
+	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
+	if err != nil {
+		logger.WithError(err).Warn("Error getting user")
+		utils.WriteError(w, http.StatusConflict, "Error getting user", nil)
+		return
+	}
+	logger.WithField("userID", &principal.UserID).Debug("Get user complete")
+	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
+}
+
 type TokenResponse struct {
-	Token string       `json:"token"`
-	User  *models.User `json:"user,omitempty"`
+	Tokens *auth.Tokens `json:"tokens,omitempty"` //this will insert all tokens struct fields
+	User   *models.User `json:"user,omitempty"`
 }
 
 func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWriter, status int, user *models.User, cookie bool) {
 	// Issue token:
-	token, err := api.Tokens.IssueToken(models.Principal{UserID: user.ID})
-	if err != nil {
+	// TODO: add user role to Principal
+	tokens, err := auth.IssueToken(models.Principal{UserID: user.ID})
+	if err != nil || tokens == nil {
 		logrus.WithError(err).Warn("Error issuing token.")
 		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
 		return
@@ -138,14 +155,13 @@ func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWrite
 
 	// Write token response:
 	tokenResponse := TokenResponse{
-		Token: token,
-		User:  user,
+		Tokens: tokens,
+		User:   user,
 	}
 
 	// if cookie {
-		// later
+	// later
 	// }
 
 	utils.WriteJSON(w, status, tokenResponse)
-
 }

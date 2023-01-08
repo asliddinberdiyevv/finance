@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"crypto/sha512"
 	"finance/internal/models"
 	"time"
 
@@ -11,58 +10,92 @@ import (
 
 // Very secret key
 var jwtKey = []byte("my_secret_key") // TODO change key
-var tokenDurationHours = 30 * 24     //30 days
 
-type Tokens interface {
-	IssueToken(principal models.Principal) (string, error)
-	// Verify(token string) (*models.Principal, error)
-}
+var accessTokenDuration = time.Duration(30) * time.Minute // 30 min
+//! var refreshTokenDuration = 30 * 24 // 30 days
 
-type tokens struct {
-	key             []byte
-	duration        time.Duration
-	beforeTolerance time.Duration
-	signingMethod   jwt.SigningMethod
-}
+//? type Tokens interface {
+//? 	IssueToken(principal models.Principal) (string, error)
+//?  Verify(token string) (*models.Principal, error)
+//? }
+
+//? type tokens struct {
+//? 	key           []byte
+//? 	duration      time.Duration
+//? 	signingMethod jwt.SigningMethod
+//? }
 
 type Cliams struct {
 	UserID models.UserID `json:"userID"`
 	jwt.StandardClaims
 }
 
-func NewTokens() Tokens {
-	hasher := sha512.New()
+//? func NewTokens() Tokens {
+//? 	tokenDuration := time.Duration(tokenDurationHours) * time.Hour
 
-	if _, err := hasher.Write([]byte(jwtKey)); err != nil {
-		panic(err)
-	}
+//?	return &tokens{
+//?	key:           jwtKey,
+//?		duration:      tokenDuration,
+//?		signingMethod: jwt.SigningMethodHS512,
+//?	}
+//?}
 
-	tokenDuration := time.Duration(tokenDurationHours) * time.Hour
-
-	return &tokens{
-		key:             hasher.Sum(nil),
-		duration:        tokenDuration,
-		beforeTolerance: -2 * time.Minute,
-		signingMethod:   jwt.SigningMethodHS512,
-	}
+// * Tokens is wrapper for access and refresh tokens
+type Tokens struct {
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
-func (t *tokens) IssueToken(principal models.Principal) (string, error) {
+// * IssueToken generate Access and Refresh token:
+// * Currently we will generate only access token
+func IssueToken(principal models.Principal) (*Tokens, error) {
 	if principal.UserID == models.NilUserID {
-		return "", errors.New("invalid principal")
+		return nil, errors.New("invalid principal")
 	}
 
 	now := time.Now()
 	claims := &Cliams{
 		UserID: principal.UserID,
 		StandardClaims: jwt.StandardClaims{
-			IssuedAt:  now.Unix(),
-			NotBefore: now.Add(t.beforeTolerance).Unix(),
-			ExpiresAt: now.Add(t.duration).Unix(),
+			ExpiresAt: now.Add(accessTokenDuration).Unix(),
 		},
 	}
 
-	token := jwt.NewWithClaims(t.signingMethod, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 
-	return token.SignedString(t.key)
+	accessToken, err := token.SignedString(jwtKey)
+	if err != nil {
+		return nil, err
+	}
+
+	tokens := Tokens{
+		AccessToken: accessToken,
+	}
+
+	return &tokens, nil
+}
+
+func VerifyToken(accessToken string) (*models.Principal, error) {
+	cliams := &Cliams{}
+
+	tkn, err := jwt.ParseWithClaims(accessToken, cliams, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			return nil, err
+		}
+		return nil, err
+	}
+
+	if !tkn.Valid {
+		return nil, err
+	}
+
+	principal := &models.Principal{
+		UserID: models.UserID(cliams.Id),
+	}
+
+	return principal, nil
 }
