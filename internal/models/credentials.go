@@ -13,7 +13,7 @@ type Credentials struct {
 
 // * Principal is an authenticated entity
 type Principal struct {
-	UserID `json:"userID,omitempty"`
+	UserID UserID `json:"userID,omitempty"`
 }
 
 // * NilPrincipal is an uninitialized Principal

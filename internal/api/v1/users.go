@@ -82,7 +82,6 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("User created")
 
-	// utils.WriteJSON(w, http.StatusCreated, createdUser)
 	api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, true)
 }
 
@@ -118,8 +117,6 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.WithField("userID", user.ID).Debug("user logged in")
-
-	// utils.WriteJSON(w, http.StatusOK, user)
 	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
 }
 
