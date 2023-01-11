@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"finance/internal/api/auth"
 	"finance/internal/api/utils"
+	"strings"
 
 	"finance/internal/database"
 	"finance/internal/models"
@@ -124,6 +125,15 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Get()")
 	principal := auth.GetPrincipal(r)
 
+	// get by id user  my condition
+	userId := string(principal.UserID)
+	isCorrectUserId := strings.Contains(r.URL.Path, userId)
+	if !isCorrectUserId {
+		logger.Error("Not found user")
+		utils.WriteError(w, http.StatusNotFound, "Not found user", nil)
+		return
+	}
+
 	ctx := r.Context()
 	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
 	if err != nil {
@@ -131,7 +141,7 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusConflict, "Error getting user", nil)
 		return
 	}
-	logger.WithField("userID", &principal.UserID).Debug("Get user complete")
+	logger.WithField("userID", principal.UserID).Debug("Get user complete")
 	utils.WriteJSON(w, http.StatusOK, user)
 }
 

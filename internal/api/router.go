@@ -2,7 +2,7 @@ package api
 
 import (
 	"finance/internal/api/auth"
-	"finance/internal/api/v1"
+	v1 "finance/internal/api/v1"
 	"finance/internal/config"
 	"finance/internal/database"
 	"net/http"

@@ -33,7 +33,7 @@ func CheckToken(r *http.Request) (*http.Request, error) {
 		return r, err
 	}
 
-	// * allow to continue without token
+	// ! allow to continue without token
 	if token == "" {
 		return r, nil
 	}

@@ -11,8 +11,8 @@ import (
 // Very secret key
 var jwtKey = []byte("my_secret_key") // TODO change key
 
-var accessTokenDuration = time.Duration(30) * time.Minute // 30 min
-//! var refreshTokenDuration = 30 * 24 // 30 days
+var accessTokenDuration = time.Duration(1) * time.Minute // 30 min
+var refreshTokenDuration = 30 * 24                        // 30 days
 
 type Cliams struct {
 	UserID models.UserID `json:"userID"`
@@ -63,13 +63,13 @@ func VerifyToken(accessToken string) (*models.Principal, error) {
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return nil, err
+			return nil, errors.New("Invalid token")
 		}
-		return nil, err
+		return nil, errors.New("Invalid token")
 	}
 
 	if !tkn.Valid {
-		return nil, err
+		return nil, errors.New("Invalid token")
 	}
 
 	principal := &models.Principal{
