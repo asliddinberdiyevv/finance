@@ -14,31 +14,10 @@ var jwtKey = []byte("my_secret_key") // TODO change key
 var accessTokenDuration = time.Duration(30) * time.Minute // 30 min
 //! var refreshTokenDuration = 30 * 24 // 30 days
 
-//? type Tokens interface {
-//? 	IssueToken(principal models.Principal) (string, error)
-//?  Verify(token string) (*models.Principal, error)
-//? }
-
-//? type tokens struct {
-//? 	key           []byte
-//? 	duration      time.Duration
-//? 	signingMethod jwt.SigningMethod
-//? }
-
 type Cliams struct {
 	UserID models.UserID `json:"userID"`
 	jwt.StandardClaims
 }
-
-//? func NewTokens() Tokens {
-//? 	tokenDuration := time.Duration(tokenDurationHours) * time.Hour
-
-//?	return &tokens{
-//?	key:           jwtKey,
-//?		duration:      tokenDuration,
-//?		signingMethod: jwt.SigningMethodHS512,
-//?	}
-//?}
 
 // * Tokens is wrapper for access and refresh tokens
 type Tokens struct {
@@ -94,7 +73,7 @@ func VerifyToken(accessToken string) (*models.Principal, error) {
 	}
 
 	principal := &models.Principal{
-		UserID: models.UserID(cliams.Id),
+		UserID: cliams.UserID,
 	}
 
 	return principal, nil

@@ -81,8 +81,8 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("User created")
-
-	api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, true)
+	utils.WriteJSON(w, http.StatusCreated, createdUser)
+	// api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, true)
 }
 
 func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.WithField("userID", &principal.UserID).Debug("Get user complete")
-	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
+	utils.WriteJSON(w, http.StatusOK, user)
 }
 
 type TokenResponse struct {
