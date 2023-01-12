@@ -11,8 +11,8 @@ import (
 // Very secret key
 var jwtKey = []byte("my_secret_key") // TODO change key
 
-var accessTokenDuration = time.Duration(1) * time.Minute // 30 min
-var refreshTokenDuration = 30 * 24                        // 30 days
+var accessTokenDuration = time.Duration(30) * time.Minute   // 30 min
+var refreshTokenDuration = time.Duration(30*24) * time.Hour // 30 days
 
 type Cliams struct {
 	UserID models.UserID `json:"userID"`
@@ -21,8 +21,10 @@ type Cliams struct {
 
 // * Tokens is wrapper for access and refresh tokens
 type Tokens struct {
-	AccessToken  string `json:"access_token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	AccessToken           string `json:"access_token,omitempty"`
+	AccessTokenExpiresAt  int64  `json:"expiresAt,omitempty"`
+	RefreshToken          string `json:"refresh_token,omitempty"`
+	RefreshTokenExpiresAt int64  `json:"-"` //! we will store this time in database with refersh token
 }
 
 // * IssueToken generate Access and Refresh token:
@@ -32,26 +34,44 @@ func IssueToken(principal models.Principal) (*Tokens, error) {
 		return nil, errors.New("invalid principal")
 	}
 
-	now := time.Now()
-	claims := &Cliams{
-		UserID: principal.UserID,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: now.Add(accessTokenDuration).Unix(),
-		},
+	accessToken, accessTokenExpiresAt, err := GenerateToken(principal, accessTokenDuration)
+	if err != nil {
+		return nil, err
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-
-	accessToken, err := token.SignedString(jwtKey)
+	refreshToken, refreshTokenExpiresAt, err := GenerateToken(principal, refreshTokenDuration)
 	if err != nil {
 		return nil, err
 	}
 
 	tokens := Tokens{
-		AccessToken: accessToken,
+		AccessToken:          accessToken,
+		AccessTokenExpiresAt: accessTokenExpiresAt,
+		RefreshToken: refreshToken,
+		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 	}
 
 	return &tokens, nil
+}
+
+func GenerateToken(principal models.Principal, duration time.Duration) (string, int64, error) {
+	now := time.Now()
+
+	// * Generate access token
+	claims := &Cliams{
+		UserID: principal.UserID,
+		StandardClaims: jwt.StandardClaims{
+			IssuedAt:  now.Unix(),
+			ExpiresAt: now.Add(duration).Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	tokenString, err := token.SignedString(jwtKey)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return tokenString, claims.ExpiresAt, nil
 }
 
 func VerifyToken(accessToken string) (*models.Principal, error) {

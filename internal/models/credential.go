@@ -2,8 +2,10 @@ package models
 
 import "fmt"
 
-// * Credentials used in login API
-type Credentials struct {
+// * Credential used in login API
+type Credential struct {
+	SessionData
+
 	// * Username/Password login:
 	Email    string `json:"email"`
 	Password string `json:"password"`

@@ -21,6 +21,8 @@ type UserAPI struct {
 
 type UserParameters struct {
 	models.User
+	models.SessionData
+
 	Password string `json:"password"`
 }
 
@@ -82,15 +84,15 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("User created")
-	utils.WriteJSON(w, http.StatusCreated, createdUser)
-	// api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, true)
+	// utils.WriteJSON(w, http.StatusCreated, createdUser)
+	api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, &userParameters.SessionData, true)
 }
 
 func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Login()")
 
-	var credentials models.Credentials
-	if err := json.NewDecoder(r.Body).Decode(&credentials); err != nil {
+	var credential models.Credential
+	if err := json.NewDecoder(r.Body).Decode(&credential); err != nil {
 		logger.WithError(err).Warn("could not decode parametrs")
 		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
 			"error": err.Error(),
@@ -99,11 +101,11 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger = logger.WithFields(logrus.Fields{
-		"email": credentials.Email,
+		"email": credential.Email,
 	})
 
 	ctx := r.Context()
-	user, err := api.DB.GetUserByEmail(ctx, credentials.Email)
+	user, err := api.DB.GetUserByEmail(ctx, credential.Email)
 	if err != nil {
 		logger.WithError(err).Warn("Error logging in")
 		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
@@ -111,18 +113,19 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Checking if password is correct
-	if err := user.CheckPassword(credentials.Password); err != nil {
+	if err := user.CheckPassword(credential.Password); err != nil {
 		logger.WithError(err).Warn("Error logging in")
 		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
 		return
 	}
 
 	logger.WithField("userID", user.ID).Debug("user logged in")
-	api.writeTokenResponse(ctx, w, http.StatusOK, user, true)
+	api.writeTokenResponse(ctx, w, http.StatusOK, user, &credential.SessionData, true)
 }
 
 func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Get()")
+
 	principal := auth.GetPrincipal(r)
 
 	// get by id user  my condition
@@ -150,11 +153,24 @@ type TokenResponse struct {
 	User   *models.User `json:"user,omitempty"`
 }
 
-func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWriter, status int, user *models.User, cookie bool) {
+func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWriter, status int, user *models.User, sessionData *models.SessionData, cookie bool) {
 	// Issue token:
 	// TODO: add user role to Principal
 	tokens, err := auth.IssueToken(models.Principal{UserID: user.ID})
 	if err != nil || tokens == nil {
+		logrus.WithError(err).Warn("Error issuing token.")
+		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
+		return
+	}
+
+	session := models.Session{
+		UserID:       user.ID,
+		DeviceID:     sessionData.DeviceID,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresAt:    tokens.RefreshTokenExpiresAt,
+	}
+
+	if err := api.DB.SaveRefreshToken(ctx, session); err != nil {
 		logrus.WithError(err).Warn("Error issuing token.")
 		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
 		return
