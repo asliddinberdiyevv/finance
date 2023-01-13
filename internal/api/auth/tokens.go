@@ -11,8 +11,8 @@ import (
 // Very secret key
 var jwtKey = []byte("my_secret_key") // TODO change key
 
-var accessTokenDuration = time.Duration(30) * time.Minute   // 30 min
-var refreshTokenDuration = time.Duration(30*24) * time.Hour // 30 days
+var accessTokenDuration = time.Duration(30) * time.Minute // 30 minuts
+var refreshTokenDuration = time.Duration(2) * time.Hour   // 2 hours
 
 type Cliams struct {
 	UserID models.UserID `json:"userID"`
@@ -45,9 +45,9 @@ func IssueToken(principal models.Principal) (*Tokens, error) {
 	}
 
 	tokens := Tokens{
-		AccessToken:          accessToken,
-		AccessTokenExpiresAt: accessTokenExpiresAt,
-		RefreshToken: refreshToken,
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  accessTokenExpiresAt,
+		RefreshToken:          refreshToken,
 		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 	}
 
@@ -74,26 +74,26 @@ func GenerateToken(principal models.Principal, duration time.Duration) (string, 
 	return tokenString, claims.ExpiresAt, nil
 }
 
-func VerifyToken(accessToken string) (*models.Principal, error) {
+func VerifyToken(token string) (*models.Principal, error) {
 	cliams := &Cliams{}
-
-	tkn, err := jwt.ParseWithClaims(accessToken, cliams, func(token *jwt.Token) (interface{}, error) {
+	tkn, err := jwt.ParseWithClaims(token, cliams, func(token *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return nil, errors.New("Invalid token")
+			return nil, err
 		}
-		return nil, errors.New("Invalid token")
-	}
-
-	if !tkn.Valid {
-		return nil, errors.New("Invalid token")
+		return nil, err
 	}
 
 	principal := &models.Principal{
 		UserID: cliams.UserID,
+	}
+
+	// We want to return principal even token invalid because we need to get UserID
+	if !tkn.Valid {
+		return principal, err
 	}
 
 	return principal, nil

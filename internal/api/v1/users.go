@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"finance/internal/api/auth"
 	"finance/internal/api/utils"
-	"strings"
 
 	"finance/internal/database"
 	"finance/internal/models"
@@ -84,8 +83,8 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger.Info("User created")
-	// utils.WriteJSON(w, http.StatusCreated, createdUser)
-	api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, &userParameters.SessionData, true)
+	utils.WriteJSON(w, http.StatusCreated, createdUser)
+	// api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, &userParameters.SessionData, true)
 }
 
 func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
@@ -128,15 +127,6 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 
 	principal := auth.GetPrincipal(r)
 
-	// get by id user  my condition
-	userId := string(principal.UserID)
-	isCorrectUserId := strings.Contains(r.URL.Path, userId)
-	if !isCorrectUserId {
-		logger.Error("Not found user")
-		utils.WriteError(w, http.StatusNotFound, "Not found user", nil)
-		return
-	}
-
 	ctx := r.Context()
 	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
 	if err != nil {
@@ -148,11 +138,71 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, user)
 }
 
+// RefreshTokenRequest - Data user send to get new access and refresh tokens.
+type RefreshTokenRequest struct {
+	RefreshToken string          `json:"refresh_token"`
+	DeviceID     models.DeviceID `json:"device_id"`
+}
+
+func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "users.go -> Login()")
+
+	// TODO move this part to seperate function
+	var request RefreshTokenRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		logger.WithError(err).Warn("could not decode parametrs")
+		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	logger = logger.WithFields(logrus.Fields{
+		"device_id": request.DeviceID,
+	})
+
+	principal, err := auth.VerifyToken(request.RefreshToken)
+	if err != nil {
+		logger.WithError(err).Warn("Error verifing refresh token")
+		utils.WriteError(w, http.StatusUnauthorized, "Error verifing refresh token", nil)
+		return
+	}
+
+	// * If token is valid we need to check if combination UserID - DeviceID - Refresh token exists in database
+	data := models.Session{
+		UserID:       principal.UserID,
+		DeviceID:     request.DeviceID,
+		RefreshToken: request.RefreshToken,
+	}
+
+	ctx := r.Context()
+	session, err := api.DB.GetSession(ctx, data)
+	if err != nil || session == nil {
+		logger.WithError(err).Warn("Error session not exists")
+		utils.WriteError(w, http.StatusUnauthorized, "Error session not exists", nil)
+		return
+	}
+
+	// if session exists and valid we generate new access and refresh tokens.
+	logger.WithField("user_id", principal.UserID).Debug("Refresh token")
+
+	// Check if user exists
+	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
+	if err != nil {
+		logger.WithError(err).Warn("Error getting user")
+		utils.WriteError(w, http.StatusConflict, "Error getting user", nil)
+		return
+	}
+
+	api.writeTokenResponse(ctx, w, http.StatusOK, user, &models.SessionData{DeviceID: request.DeviceID}, true)
+}
+
 type TokenResponse struct {
 	Tokens *auth.Tokens `json:"tokens,omitempty"` //this will insert all tokens struct fields
 	User   *models.User `json:"user,omitempty"`
 }
 
+// writeTokenResponse - Generate Access and refresh token are return them to  user. Refresh token is stored in database as session
 func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWriter, status int, user *models.User, sessionData *models.SessionData, cookie bool) {
 	// Issue token:
 	// TODO: add user role to Principal
