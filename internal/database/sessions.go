@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"finance/internal/models"
+	"finance/internal/utils"
 )
 
 type SessionsDB interface {
@@ -22,10 +23,8 @@ var insertOrUpdateSession = `
 `
 
 func (d *database) SaveRefreshToken(ctx context.Context, session models.Session) error {
-	if _, err := d.conn.NamedQueryContext(ctx, insertOrUpdateSession, session); err != nil {
-		return err
-	}
-	return nil
+	_, err := d.conn.NamedQueryContext(ctx, insertOrUpdateSession, session)
+	return utils.CheckError(err)
 }
 
 var getSessionQuery = `

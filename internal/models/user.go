@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
+	"finance/internal/utils"
 )
 
 // UserID is indentifier for User
@@ -35,10 +36,8 @@ func (u *User) Verify() error {
 func (u *User) SetPassword(password string) error {
 	// call hash function
 	hash, err := HashPassword(password)
-	if err != nil {
-		return err
-	}
-
+ 	utils.CheckError(err)
+	
 	u.PasswordHash = &hash
 	return nil
 }

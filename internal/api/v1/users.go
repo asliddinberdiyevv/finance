@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"finance/internal/api/auth"
-	"finance/internal/api/utils"
+	"finance/internal/utils"
 
 	"finance/internal/database"
 	"finance/internal/models"
@@ -32,10 +32,7 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	// Load parameters
 	var userParameters UserParameters
 	if err := json.NewDecoder(r.Body).Decode(&userParameters); err != nil {
-		logger.WithError(err).Warn("could not decode parametrs")
-		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
-			"error": err.Error(),
-		})
+		utils.ResponseErrWithMap(err, w, "Could not decode parametrs.", http.StatusBadRequest)
 		return
 	}
 
@@ -44,17 +41,13 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err := userParameters.Verify(); err != nil {
-		logger.WithError(err).Warn("Not all fields found.")
-		utils.WriteError(w, http.StatusInternalServerError, "Not all fields found", map[string]string{
-			"error": err.Error(),
-		})
+		utils.ResponseErrWithMap(err, w, "Not all fields found.", http.StatusInternalServerError)
 		return
 	}
 
 	hashed, err := models.HashPassword(userParameters.Password)
 	if err != nil {
-		logger.WithError(err).Warn("Could not hash password.")
-		utils.WriteError(w, http.StatusInternalServerError, "Could not hash password", nil)
+		utils.ResponseErr(err, w, "Could not hash password.", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,19 +59,16 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if err := api.DB.CreateUser(ctx, newUser); err == database.ErrUserExists {
-		logger.WithError(err).Warn("User already exists")
-		utils.WriteError(w, http.StatusConflict, "User already exists", nil)
+		utils.ResponseErr(err, w, "User already exists.", http.StatusConflict)
 		return
 	} else if err != nil {
-		logger.WithError(err).Warn("Error creating user")
-		utils.WriteError(w, http.StatusConflict, "Error creating user", nil)
+		utils.ResponseErr(err, w, "Error creating user.", http.StatusConflict)
 		return
 	}
 
 	createdUser, err := api.DB.GetUserByID(ctx, &newUser.ID)
 	if err != nil {
-		logger.WithError(err).Warn("Error creating user")
-		utils.WriteError(w, http.StatusConflict, "Error creating user", nil)
+		utils.ResponseErr(err, w, "Error creating user.", http.StatusConflict)
 		return
 	}
 
@@ -92,10 +82,7 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 
 	var credential models.Credential
 	if err := json.NewDecoder(r.Body).Decode(&credential); err != nil {
-		logger.WithError(err).Warn("could not decode parametrs")
-		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
-			"error": err.Error(),
-		})
+		utils.ResponseErrWithMap(err, w, "Could not decode parametrs.", http.StatusBadRequest)
 		return
 	}
 
@@ -106,15 +93,13 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, err := api.DB.GetUserByEmail(ctx, credential.Email)
 	if err != nil {
-		logger.WithError(err).Warn("Error logging in")
-		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
+		utils.ResponseErr(err, w, "Invalid email or password.", http.StatusConflict)
 		return
 	}
 
 	// Checking if password is correct
 	if err := user.CheckPassword(credential.Password); err != nil {
-		logger.WithError(err).Warn("Error logging in")
-		utils.WriteError(w, http.StatusConflict, "invalid email or password", nil)
+		utils.ResponseErr(err, w, "Invalid email or password.", http.StatusConflict)
 		return
 	}
 
@@ -130,10 +115,10 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
 	if err != nil {
-		logger.WithError(err).Warn("Error getting user")
-		utils.WriteError(w, http.StatusConflict, "Error getting user", nil)
+		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
 		return
 	}
+
 	logger.WithField("userID", principal.UserID).Debug("Get user complete")
 	utils.WriteJSON(w, http.StatusOK, user)
 }
@@ -145,15 +130,12 @@ type RefreshTokenRequest struct {
 }
 
 func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	logger := logrus.WithField("func", "users.go -> Login()")
+	logger := logrus.WithField("func", "users.go -> RefreshToken()")
 
 	// TODO move this part to seperate function
 	var request RefreshTokenRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		logger.WithError(err).Warn("could not decode parametrs")
-		utils.WriteError(w, http.StatusBadRequest, "could not decode parametrs", map[string]string{
-			"error": err.Error(),
-		})
+		utils.ResponseErrWithMap(err, w, "Could not decode parametrs.", http.StatusBadRequest)
 		return
 	}
 
@@ -163,8 +145,7 @@ func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	principal, err := auth.VerifyToken(request.RefreshToken)
 	if err != nil {
-		logger.WithError(err).Warn("Error verifing refresh token")
-		utils.WriteError(w, http.StatusUnauthorized, "Error verifing refresh token", nil)
+		utils.ResponseErr(err, w, "Error verifing refresh token.", http.StatusUnauthorized)
 		return
 	}
 
@@ -178,8 +159,7 @@ func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	session, err := api.DB.GetSession(ctx, data)
 	if err != nil || session == nil {
-		logger.WithError(err).Warn("Error session not exists")
-		utils.WriteError(w, http.StatusUnauthorized, "Error session not exists", nil)
+		utils.ResponseErr(err, w, "Error session not exists.", http.StatusUnauthorized)
 		return
 	}
 
@@ -189,8 +169,7 @@ func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	// Check if user exists
 	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
 	if err != nil {
-		logger.WithError(err).Warn("Error getting user")
-		utils.WriteError(w, http.StatusConflict, "Error getting user", nil)
+		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
 		return
 	}
 
@@ -208,8 +187,7 @@ func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWrite
 	// TODO: add user role to Principal
 	tokens, err := auth.IssueToken(models.Principal{UserID: user.ID})
 	if err != nil || tokens == nil {
-		logrus.WithError(err).Warn("Error issuing token.")
-		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
+		utils.ResponseErr(err, w, "Error issuing token.", http.StatusUnauthorized)
 		return
 	}
 
@@ -221,8 +199,7 @@ func (api *UserAPI) writeTokenResponse(ctx context.Context, w http.ResponseWrite
 	}
 
 	if err := api.DB.SaveRefreshToken(ctx, session); err != nil {
-		logrus.WithError(err).Warn("Error issuing token.")
-		utils.WriteError(w, http.StatusUnauthorized, "Error issuing token", nil)
+		utils.ResponseErr(err, w, "Error issuing token.", http.StatusUnauthorized)
 		return
 	}
 

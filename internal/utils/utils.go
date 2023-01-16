@@ -36,4 +36,24 @@ func WriteJSON(w http.ResponseWriter, code int, data interface{}) {
 	}
 }
 
+// CheckError return error
+func CheckError(err error) error {
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
+// ResponseErr
+func ResponseErr(err error, w http.ResponseWriter, msg string, status int) {
+	logrus.WithError(err).Warn(msg)
+	WriteError(w, status, msg, nil)
+}
+
+// ResponseErrWithMap
+func ResponseErrWithMap(err error, w http.ResponseWriter, msg string, status int) {
+	logrus.WithError(err).Warn(msg)
+	WriteError(w, status, msg, map[string]string{
+		"error": err.Error(),
+	})
+}

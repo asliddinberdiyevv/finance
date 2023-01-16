@@ -13,7 +13,8 @@ const UniqueViolation = "unique_violation"
 type Database interface {
 	UsersDB
 	SessionsDB
-	
+	UserRoleDB
+
 	io.Closer
 }
 
