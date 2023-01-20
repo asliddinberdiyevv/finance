@@ -24,7 +24,6 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("Error verifying database.")
 	}
-
 	logrus.Debug("Database is ready to use.")
 
 	// Create new router

@@ -3,8 +3,8 @@ package v1
 import (
 	"encoding/json"
 	"finance/internal/api/auth"
-	"finance/internal/utils"
 	"finance/internal/models"
+	"finance/internal/utils"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -25,8 +25,10 @@ func (api *UserAPI) GrantRole(w http.ResponseWriter, r *http.Request) {
 
 	// Decode parameters
 	var userRole models.UserRole
-	decodeErr := json.NewDecoder(r.Body).Decode(&userRole)
-	utils.ResponseErrWithMap(decodeErr, w, "Could not decode parametrs.", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&userRole); err != nil {
+		utils.ResponseErrWithMap(err, w, "Could not decode parametrs.", http.StatusBadRequest)
+		return
+	}
 
 	ctx := r.Context()
 	// Store role in database

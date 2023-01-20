@@ -28,6 +28,9 @@ func NewRouter(db database.Database) (http.Handler, error) {
 	userAPI := &v1.UserAPI{
 		DB: db,
 	}
+	accountAPI := &v1.AccountAPI{
+		DB: db,
+	}
 
 	apis := []API{
 		/* ---------- LOGIN ---------- */
@@ -37,7 +40,7 @@ func NewRouter(db database.Database) (http.Handler, error) {
 		NewAPI("/refresh", "POST", userAPI.RefreshToken, auth.Member),
 
 		/* ---------- USERS ---------- */
-		NewAPI("/users", "POST", userAPI.Create, auth.Any),
+		NewAPI("/users", "POST", userAPI.Create, auth.Member),
 		// NewAPI("/users", "GET", userAPI.Create, auth.Admin),
 		NewAPI("/users/{userID}", "GET", userAPI.Get, auth.Admin, auth.MemberIsTarget),
 		// NewAPI("/users/{userID}", "PATCH", userAPI.Get, auth.Admin, auth.MemberIsTarget),
@@ -47,6 +50,13 @@ func NewRouter(db database.Database) (http.Handler, error) {
 		NewAPI("/users/{userID}/roles", "POST", userAPI.GrantRole, auth.Admin),
 		NewAPI("/users/{userID}/roles", "GET", userAPI.GetRoleList, auth.Admin),
 		NewAPI("/users/{userID}/roles", "DELETE", userAPI.RevokeRole, auth.Admin),
+
+		/* ---------- ROLES ---------- */
+		NewAPI("/users/{userID}/accounts", "POST", accountAPI.Create, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/accounts", "GET", accountAPI.List, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/accounts/{accountID}", "GET", accountAPI.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/accounts/{accountID}", "PATCH", accountAPI.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/accounts/{accountID}", "DELETE", accountAPI.Delete, auth.Admin, auth.MemberIsTarget),
 	}
 
 	for _, api := range apis {
