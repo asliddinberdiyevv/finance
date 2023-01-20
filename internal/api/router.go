@@ -2,7 +2,7 @@ package api
 
 import (
 	"finance/internal/api/auth"
-	"finance/internal/api/v1"
+	v1 "finance/internal/api/v1"
 	"finance/internal/config"
 	"finance/internal/database"
 	"net/http"
@@ -36,9 +36,13 @@ func NewRouter(db database.Database) (http.Handler, error) {
 	apiRouter.HandleFunc("/refresh", permissons.Wrap(userAPI.RefreshToken, auth.Member)).Methods("POST")
 
 	/* ---------- ROLES ---------- */
-	apiRouter.HandleFunc("/users/{userID}/roles", userAPI.GrantRole).Methods("POST")                               // Create role
-	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.GetRoleList, auth.Admin)).Methods("GET") // Get all roles
-	apiRouter.HandleFunc("/users/{userID}/roles", userAPI.RevokeRole).Methods("DELETE")                            // Delete role
+
+	// Create role
+	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.GrantRole, auth.Admin)).Methods("POST")
+	// Get all roles
+	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.GetRoleList, auth.Admin)).Methods("GET")
+	// Delete role
+	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.RevokeRole, auth.Admin)).Methods("DELETE")
 
 	/* ---------- MIDDLEWARE ---------- */
 	router.Use(auth.AuthorizationToken)

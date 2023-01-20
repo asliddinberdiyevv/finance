@@ -2,13 +2,12 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
-	"finance/internal/utils"
 	"finance/internal/database"
 	"finance/internal/models"
+	"finance/internal/utils"
 
 	"github.com/bluele/gcache"
 	"github.com/gorilla/mux"
@@ -71,10 +70,10 @@ func (p *permissions) withRoles(principal models.Principal, roleFunc func([]*mod
 func (p *permissions) Wrap(next http.HandlerFunc, permissionTypes ...PermissionTypes) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if allowed := p.Check(r, permissionTypes...); allowed {
-			utils.WriteError(w, http.StatusUnauthorized, "permission denied", nil)
+			next.ServeHTTP(w, r)
 			return
 		}
-		next.ServeHTTP(w, r)
+		utils.WriteError(w, http.StatusUnauthorized, "permission denied", nil)
 	})
 }
 
@@ -84,7 +83,6 @@ func (p *permissions) Wrap(next http.HandlerFunc, permissionTypes ...PermissionT
 func (p *permissions) Check(r *http.Request, permissionTypes ...PermissionTypes) bool {
 	principal := GetPrincipal(r)
 	for _, permissionType := range permissionTypes {
-		fmt.Println(permissionType)
 		switch permissionType {
 		case Admin:
 			if allowed, _ := p.withRoles(principal, adminOnly); allowed {
