@@ -12,6 +12,8 @@ const (
 	Member PermissionTypes = "member"
 	// User is loged in and user id passed to API is the same
 	MemberIsTarget PermissionTypes = "member_is_target"
+	// Any one can access
+	Any PermissionTypes = "anonym"
 )
 
 // We will create functions for each type

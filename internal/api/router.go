@@ -10,10 +10,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type API struct {
+	Path        string
+	Method      string
+	Func        http.HandlerFunc
+	Permissions []auth.PermissionTypes
+}
+
 func NewRouter(db database.Database) (http.Handler, error) {
 	permissons := auth.NewPermissions(db)
 
-	router := mux.NewRouter()
+	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/version", v1.VersionHanler)
 
 	apiRouter := router.PathPrefix("/api/" + config.Version).Subrouter()
@@ -22,30 +29,36 @@ func NewRouter(db database.Database) (http.Handler, error) {
 		DB: db,
 	}
 
-	/* ---------- USERS ---------- */
-	apiRouter.HandleFunc("/users", userAPI.Create).Methods("POST") // create user
-	// apiRouter.HandleFunc("/users", userAPI.Create).Methods("GET") // get all users
-	apiRouter.HandleFunc("/users/{userID}", userAPI.Get).Methods("GET") // get user by id
-	// apiRouter.HandleFunc("/users/{userID}", userAPI.Create).Methods("PATCH") // update user by id
-	// apiRouter.HandleFunc("/users/{userID}", userAPI.Create).Methods("DELETE") // delete user by id
+	apis := []API{
+		/* ---------- LOGIN ---------- */
+		NewAPI("/login", "POST", userAPI.Login, auth.Any),
 
-	/* ---------- LOGIN ---------- */
-	apiRouter.HandleFunc("/login", userAPI.Login).Methods("POST")
+		/* ---------- TOKENS ---------- */
+		NewAPI("/refresh", "POST", userAPI.RefreshToken, auth.Member),
 
-	/* ---------- TOKENS ---------- */
-	apiRouter.HandleFunc("/refresh", permissons.Wrap(userAPI.RefreshToken, auth.Member)).Methods("POST")
+		/* ---------- USERS ---------- */
+		NewAPI("/users", "POST", userAPI.Create, auth.Any),
+		// NewAPI("/users", "GET", userAPI.Create, auth.Admin),
+		NewAPI("/users/{userID}", "GET", userAPI.Get, auth.Admin, auth.MemberIsTarget),
+		// NewAPI("/users/{userID}", "PATCH", userAPI.Get, auth.Admin, auth.MemberIsTarget),
+		// NewAPI("/users/{userID}", "DELETE", userAPI.Get, auth.Admin),
 
-	/* ---------- ROLES ---------- */
+		/* ---------- ROLES ---------- */
+		NewAPI("/users/{userID}/roles", "POST", userAPI.GrantRole, auth.Admin),
+		NewAPI("/users/{userID}/roles", "GET", userAPI.GetRoleList, auth.Admin),
+		NewAPI("/users/{userID}/roles", "DELETE", userAPI.RevokeRole, auth.Admin),
+	}
 
-	// Create role
-	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.GrantRole, auth.Admin)).Methods("POST")
-	// Get all roles
-	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.GetRoleList, auth.Admin)).Methods("GET")
-	// Delete role
-	apiRouter.HandleFunc("/users/{userID}/roles", permissons.Wrap(userAPI.RevokeRole, auth.Admin)).Methods("DELETE")
+	for _, api := range apis {
+		apiRouter.HandleFunc(api.Path, permissons.Wrap(api.Func, api.Permissions...)).Methods(api.Method)
+	}
 
 	/* ---------- MIDDLEWARE ---------- */
 	router.Use(auth.AuthorizationToken)
 
 	return router, nil
+}
+
+func NewAPI(path string, method string, handlerFunc http.HandlerFunc, permissionTypes ...auth.PermissionTypes) API {
+	return API{path, method, handlerFunc, permissionTypes}
 }

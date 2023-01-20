@@ -1,5 +1,7 @@
 package models
 
+import "github.com/pkg/errors"
+
 type DeviceID string
 
 var NilDeviceID DeviceID
@@ -15,4 +17,13 @@ type Session struct {
 // SessionData used to represent data sent in json body with requests
 type SessionData struct {
 	DeviceID DeviceID `json:"device_id"`
+}
+
+// Verify all required fields before create or update
+func (u *SessionData) Verify() error {
+	if len(u.DeviceID) == 0 {
+		return errors.New("DeviceID is requered")
+	}
+
+	return nil
 }

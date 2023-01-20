@@ -10,6 +10,7 @@ import (
 	"finance/internal/models"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,8 +41,12 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 		"email": *userParameters.Email,
 	})
 
-	if err := userParameters.Verify(); err != nil {
-		utils.ResponseErrWithMap(err, w, "Not all fields found.", http.StatusInternalServerError)
+	if err := userParameters.User.Verify(); err != nil {
+		utils.ResponseErrWithMap(err, w, "Not all fields found.", http.StatusBadRequest)
+		return
+	}
+	if err := userParameters.SessionData.Verify(); err != nil {
+		utils.ResponseErrWithMap(err, w, "Not all fields found.", http.StatusBadRequest)
 		return
 	}
 
@@ -72,7 +77,7 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Info("User created")
+	logger.WithField("userID", createdUser.ID).Info("User created")
 	utils.WriteJSON(w, http.StatusCreated, createdUser)
 	// api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, &userParameters.SessionData, true)
 }
@@ -96,6 +101,10 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 		utils.ResponseErr(err, w, "Invalid email or password.", http.StatusConflict)
 		return
 	}
+	if err := credential.SessionData.Verify(); err != nil {
+		utils.ResponseErrWithMap(err, w, "Not all fields found.", http.StatusBadRequest)
+		return
+	}
 
 	// Checking if password is correct
 	if err := user.CheckPassword(credential.Password); err != nil {
@@ -110,16 +119,17 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Get()")
 
-	principal := auth.GetPrincipal(r)
+	vars := mux.Vars(r)
+	userID := models.UserID(vars["userID"])
 
 	ctx := r.Context()
-	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
+	user, err := api.DB.GetUserByID(ctx, &userID)
 	if err != nil {
 		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
 		return
 	}
 
-	logger.WithField("userID", principal.UserID).Debug("Get user complete")
+	logger.WithField("userID", userID).Debug("Get user complete")
 	utils.WriteJSON(w, http.StatusOK, user)
 }
 

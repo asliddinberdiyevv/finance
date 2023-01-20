@@ -69,11 +69,11 @@ func (p *permissions) withRoles(principal models.Principal, roleFunc func([]*mod
 // We need to see if we have principal on Request in this point...
 func (p *permissions) Wrap(next http.HandlerFunc, permissionTypes ...PermissionTypes) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if allowed := p.Check(r, permissionTypes...); allowed {
-			next.ServeHTTP(w, r)
+		if allowed := p.Check(r, permissionTypes...); !allowed {
+			utils.WriteError(w, http.StatusUnauthorized, "permission denied", nil)
 			return
 		}
-		utils.WriteError(w, http.StatusUnauthorized, "permission denied", nil)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -97,6 +97,8 @@ func (p *permissions) Check(r *http.Request, permissionTypes ...PermissionTypes)
 			if allowed := memberIsTarget(targetUserID, principal); allowed {
 				return true
 			}
+		case Any:
+			return true
 		}
 	}
 	return false
