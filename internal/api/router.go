@@ -31,6 +31,9 @@ func NewRouter(db database.Database) (http.Handler, error) {
 	accountAPI := &v1.AccountAPI{
 		DB: db,
 	}
+	categoryAPI := &v1.CategoryAPI{
+		DB: db,
+	}
 
 	apis := []API{
 		/* ---------- LOGIN ---------- */
@@ -51,12 +54,19 @@ func NewRouter(db database.Database) (http.Handler, error) {
 		NewAPI("/users/{userID}/roles", "GET", userAPI.GetRoleList, auth.Admin),
 		NewAPI("/users/{userID}/roles", "DELETE", userAPI.RevokeRole, auth.Admin),
 
-		/* ---------- ROLES ---------- */
+		/* ---------- ACCOUNTS ---------- */
 		NewAPI("/users/{userID}/accounts", "POST", accountAPI.Create, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/accounts", "GET", accountAPI.List, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/accounts/{accountID}", "GET", accountAPI.Get, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/accounts/{accountID}", "PATCH", accountAPI.Update, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/accounts/{accountID}", "DELETE", accountAPI.Delete, auth.Admin, auth.MemberIsTarget),
+
+		/* ---------- CATEGORIES ---------- */
+		NewAPI("/users/{userID}/categories", "POST", categoryAPI.Create, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories", "GET", categoryAPI.List, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "GET", categoryAPI.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "PATCH", categoryAPI.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "DELETE", categoryAPI.Delete, auth.Admin, auth.MemberIsTarget),
 	}
 
 	for _, api := range apis {

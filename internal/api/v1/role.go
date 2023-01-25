@@ -42,6 +42,34 @@ func (api *UserAPI) GrantRole(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (api *UserAPI) GetRoleList(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "users.go -> GetRoleList()")
+
+	vars := mux.Vars(r)
+	userID := models.UserID(vars["userID"])
+	principal := auth.GetPrincipal(r)
+
+	logger = logger.WithFields(logrus.Fields{
+		"user_id":   userID,
+		"principal": principal,
+	})
+
+	ctx := r.Context()
+	// Store role in database
+	roles, err := api.DB.GetRolesByUser(ctx, userID)
+	if err != nil {
+		logger.WithError(err).Warn("Error getting roles.")
+		utils.WriteError(w, http.StatusInternalServerError, "Error getting roles.", nil)
+		return
+	}
+
+	if roles == nil {
+		roles = make([]*models.UserRole, 0)
+	}
+
+	utils.WriteJSON(w, http.StatusOK, &roles)
+}
+
 func (api *UserAPI) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> RevokeRole()")
 
@@ -74,32 +102,4 @@ func (api *UserAPI) RevokeRole(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusCreated, &ActDeleted{
 		Deleted: true,
 	})
-}
-
-func (api *UserAPI) GetRoleList(w http.ResponseWriter, r *http.Request) {
-	logger := logrus.WithField("func", "users.go -> GetRoleList()")
-
-	vars := mux.Vars(r)
-	userID := models.UserID(vars["userID"])
-	principal := auth.GetPrincipal(r)
-
-	logger = logger.WithFields(logrus.Fields{
-		"user_id":   userID,
-		"principal": principal,
-	})
-
-	ctx := r.Context()
-	// Store role in database
-	roles, err := api.DB.GetRolesByUser(ctx, userID)
-	if err != nil {
-		logger.WithError(err).Warn("Error getting roles.")
-		utils.WriteError(w, http.StatusInternalServerError, "Error getting roles.", nil)
-		return
-	}
-
-	if roles == nil {
-		roles = make([]*models.UserRole, 0)
-	}
-
-	utils.WriteJSON(w, http.StatusOK, &roles)
 }

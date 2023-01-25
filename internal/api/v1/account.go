@@ -57,7 +57,7 @@ func (api *AccountAPI) Create(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusCreated, account)
 }
 
-// PATCH - /users/{userID}/accounts
+// PATCH - /users/{userID}/accounts/{accountID}
 // Permission - MemberIsTarget
 func (api *AccountAPI) Update(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "account.go -> Update()")
@@ -129,6 +129,9 @@ func (api *AccountAPI) List(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.ResponseErr(err, w, "Error getting accounts.", http.StatusConflict)
 		return
+	}
+	if accounts == nil {
+		accounts = make([]*models.Account, 0)
 	}
 
 	logger.Info("Accounts returned")

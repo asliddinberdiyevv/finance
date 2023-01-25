@@ -21,10 +21,11 @@ var createAccountQuery = `
 		VALUES (:user_id, :start_balance, :account_type, :account_name, :currency)
 	RETURNING account_id;
 `
-
 func (d *database) CreateAccount(ctx context.Context, account *models.Account) error {
 	rows, err := d.conn.NamedQueryContext(ctx, createAccountQuery, account)
-	utils.CheckError(err)
+	if err != nil {
+		return err
+	}
 
 	defer rows.Close()
 	rows.Next()
@@ -43,7 +44,6 @@ var UpdateAccountQuery = `
 				currency = :currency
 		WHERE account_id = :account_id;
 `
-
 func (d *database) UpdateAccount(ctx context.Context, account *models.Account) error {
 	result, err := d.conn.NamedExecContext(ctx, UpdateAccountQuery, account)
 	utils.CheckError(err)

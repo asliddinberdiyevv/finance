@@ -5,6 +5,7 @@ import (
 	"finance/internal/config"
 	"finance/internal/database"
 	"net/http"
+
 	_ "github.com/lib/pq"
 	"github.com/namsral/flag"
 	"github.com/sirupsen/logrus"
@@ -32,7 +33,7 @@ func main() {
 		logrus.WithError(err).Fatal("Error building router")
 	}
 
-	const addr = "0.0.0.0:8088"
+	const addr = "0.0.0.0:8888"
 	server := http.Server{
 		Handler: router,
 		Addr:    addr,
