@@ -6,22 +6,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-// CategoryID is identifier of Category
-type CategoryID string
+// MerchantID is identifier of Merchant
+type MerchantID string
 
-// NilCategoryID is an empty identifier of Category
-var NilCategoryID CategoryID
+// NilMerchantID is an empty identifier of Merchant
+var NilMerchantID MerchantID
 
-type Category struct {
-	ID        CategoryID `json:"id,omitempty" db:"category_id"`
-	ParentID  CategoryID `json:"parent_id,omitempty" db:"parent_id"`
+type Merchant struct {
+	ID        MerchantID `json:"id,omitempty" db:"merchant_id"`
 	UserID    *UserID    `json:"user_id,omitempty" db:"user_id"`
 	CreatedAt *time.Time `json:"-" db:"created_at"`
 	DeletedAt *time.Time `json:"-" db:"deleted_at"`
 	Name      *string    `json:"name,omitempty" db:"name"`
 }
 
-func (c *Category) Verify() error {
+func (c *Merchant) Verify() error {
 	if c.UserID == nil || len(*c.UserID) == 0 {
 		return errors.New("user_id is required")
 	}

@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"finance/internal/models"
-	"finance/internal/utils"
 
 	"github.com/pkg/errors"
 )
@@ -46,7 +45,9 @@ var updateCategoryQuery = `
 
 func (d *database) UpdateCategory(ctx context.Context, category *models.Category) error {
 	result, err := d.conn.NamedExecContext(ctx, updateCategoryQuery, category)
-	utils.CheckError(err)
+	if err != nil {
+		return err
+	}
 
 	rows, err := result.RowsAffected()
 	if err != nil || rows == 0 {

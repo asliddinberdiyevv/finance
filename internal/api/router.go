@@ -34,6 +34,9 @@ func NewRouter(db database.Database) (http.Handler, error) {
 	categoryAPI := &v1.CategoryAPI{
 		DB: db,
 	}
+	merchantAPI := &v1.MerchantAPI{
+		DB: db,
+	}
 
 	apis := []API{
 		/* ---------- LOGIN ---------- */
@@ -67,6 +70,13 @@ func NewRouter(db database.Database) (http.Handler, error) {
 		NewAPI("/users/{userID}/categories/{categoryID}", "GET", categoryAPI.Get, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/categories/{categoryID}", "PATCH", categoryAPI.Update, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}/categories/{categoryID}", "DELETE", categoryAPI.Delete, auth.Admin, auth.MemberIsTarget),
+
+		/* ---------- MERCHANTS ---------- */
+		NewAPI("/users/{userID}/merchants", "POST", merchantAPI.Create, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants", "GET", merchantAPI.List, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "GET", merchantAPI.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "PATCH", merchantAPI.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "DELETE", merchantAPI.Delete, auth.Admin, auth.MemberIsTarget),
 	}
 
 	for _, api := range apis {
