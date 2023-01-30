@@ -17,6 +17,25 @@ type CategoryAPI struct {
 	DB database.Database
 }
 
+func SetCategoryAPI(db database.Database, router *mux.Router, permissons auth.Permissions) {
+	api := CategoryAPI{
+		DB: db,
+	}
+
+	apis := []API{
+		/* ---------- CATEGORIES ---------- */
+		NewAPI("/users/{userID}/categories", "POST", api.Create, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories", "GET", api.List, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "GET", api.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "PATCH", api.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/categories/{categoryID}", "DELETE", api.Delete, auth.Admin, auth.MemberIsTarget),
+	}
+
+	for _, api := range apis {
+		router.HandleFunc(api.Path, permissons.Wrap(api.Func, api.Permissions...)).Methods(api.Method)
+	}
+}
+
 // POST - /users/{userID}/categories
 // Permission - MemberIsTarget
 func (api *CategoryAPI) Create(w http.ResponseWriter, r *http.Request) {

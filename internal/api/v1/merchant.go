@@ -18,6 +18,25 @@ type MerchantAPI struct {
 	DB database.Database
 }
 
+func SetMerchantAPI(db database.Database, router *mux.Router, permissons auth.Permissions) {
+	api := MerchantAPI{
+		DB: db,
+	}
+
+	apis := []API{
+		/* ---------- MERCHANTS ---------- */
+		NewAPI("/users/{userID}/merchants", "POST", api.Create, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants", "GET", api.List, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "GET", api.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "PATCH", api.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}/merchants/{merchantID}", "DELETE", api.Delete, auth.Admin, auth.MemberIsTarget),
+	}
+
+	for _, api := range apis {
+		router.HandleFunc(api.Path, permissons.Wrap(api.Func, api.Permissions...)).Methods(api.Method)
+	}
+}
+
 // POST - /users/{userID}/merchants
 // Permission - MemberIsTarget
 func (api *MerchantAPI) Create(w http.ResponseWriter, r *http.Request) {

@@ -16,7 +16,32 @@ import (
 
 // UserAPI - provides REST for Users
 type UserAPI struct {
-	DB database.Database // will represent all database interafaces
+	DB database.Database
+}
+
+func SetUserAPI(db database.Database, router *mux.Router, permissons auth.Permissions) {
+	api := UserAPI{
+		DB: db,
+	}
+
+	apis := []API{
+		/* ---------- USERS ---------- */
+		NewAPI("/users", "POST", api.Create, auth.Member),
+		NewAPI("/users", "GET", api.List, auth.Admin),
+		NewAPI("/users/{userID}", "GET", api.Get, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}", "PATCH", api.Update, auth.Admin, auth.MemberIsTarget),
+		NewAPI("/users/{userID}", "DELETE", api.Delete, auth.Admin),
+
+		/* ---------- LOGIN ---------- */
+		NewAPI("/login", "POST", api.Login, auth.Any),
+
+		/* ---------- TOKENS ---------- */
+		NewAPI("/refresh", "POST", api.RefreshToken, auth.Member),
+	}
+
+	for _, api := range apis {
+		router.HandleFunc(api.Path, permissons.Wrap(api.Func, api.Permissions...)).Methods(api.Method)
+	}
 }
 
 type UserParameters struct {
@@ -26,6 +51,10 @@ type UserParameters struct {
 	Password string `json:"password"`
 }
 
+/* ---------- USERS ---------- */
+
+// POST - /users
+// Permission - Admin
 func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	// show function name is logs to track error faster
 	logger := logrus.WithField("func", "users.go -> Create()")
@@ -71,7 +100,7 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdUser, err := api.DB.GetUserByID(ctx, &newUser.ID)
+	createdUser, err := api.DB.GetUserByID(ctx, newUser.ID)
 	if err != nil {
 		utils.ResponseErr(err, w, "Error creating user.", http.StatusConflict)
 		return
@@ -79,9 +108,129 @@ func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 
 	logger.WithField("userID", createdUser.ID).Info("User created")
 	utils.WriteJSON(w, http.StatusCreated, createdUser)
-	// api.writeTokenResponse(ctx, w, http.StatusCreated, createdUser, &userParameters.SessionData, true)
 }
 
+// GET - /users
+// Permission - Admin
+func (api *UserAPI) List(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "user.go -> List()")
+	principal := auth.GetPrincipal(r)
+
+	logger = logger.WithFields(logrus.Fields{
+		"principal": principal,
+	})
+
+	ctx := r.Context()
+	users, err := api.DB.ListUsers(ctx)
+	if err != nil {
+		utils.ResponseErr(err, w, "Error getting users.", http.StatusConflict)
+		return
+	}
+
+	if users == nil {
+		users = make([]*models.User, 0)
+	}
+
+	logger.Info("Users returned")
+	utils.WriteJSON(w, http.StatusOK, users)
+}
+
+// GET - /users/{userID}
+// Permission - Admin
+func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "users.go -> Get()")
+
+	vars := mux.Vars(r)
+	userID := models.UserID(vars["userID"])
+
+	ctx := r.Context()
+	user, err := api.DB.GetUserByID(ctx, userID)
+	if err != nil {
+		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
+		return
+	}
+
+	logger.WithField("userID", userID).Debug("Get user complete")
+	utils.WriteJSON(w, http.StatusOK, user)
+}
+
+// PATCH - /users/{userID}
+// Permission - Admin
+func (api *UserAPI) Update(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "user.go -> Update()")
+
+	vars := mux.Vars(r)
+	userID := models.UserID(vars["userID"])
+	principal := auth.GetPrincipal(r)
+
+	logger = logger.WithFields(logrus.Fields{
+		"user_id":   userID,
+		"principal": principal,
+	})
+
+	// Decode parameters
+	var userRequest UserParameters
+	if err := json.NewDecoder(r.Body).Decode(&userRequest); err != nil {
+		utils.ResponseErrWithMap(err, w, "Could not decode parametrs.", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	user, err := api.DB.GetUserByID(ctx, userID)
+	if err != nil {
+		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
+		return
+	}
+
+	if userRequest.Email != nil || len(*userRequest.Email) != 0 {
+		user.Email = userRequest.Email
+	}
+
+	if len(userRequest.Password) != 0 {
+		if err := user.SetPassword(userRequest.Password); err != nil {
+			utils.ResponseErr(err, w, "Error setting password.", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := api.DB.UpdateUser(ctx, user); err != nil {
+		logger.WithError(err).Warn("Error updating user.")
+		utils.WriteError(w, http.StatusInternalServerError, "Error updating user.", nil)
+		return
+	}
+
+	logger.Info("User update")
+	utils.WriteJSON(w, http.StatusOK, user)
+}
+
+// DELETE - /users/{userID}
+// Permission - Admin
+func (api *UserAPI) Delete(w http.ResponseWriter, r *http.Request) {
+	logger := logrus.WithField("func", "user.go -> Delete()")
+
+	vars := mux.Vars(r)
+	userID := models.UserID(vars["userID"])
+	principal := auth.GetPrincipal(r)
+
+	logger = logger.WithFields(logrus.Fields{
+		"user_id":   userID,
+		"principal": principal,
+	})
+
+	ctx := r.Context()
+	deleted, err := api.DB.DeleteUser(ctx, userID)
+	if err != nil {
+		utils.ResponseErr(err, w, "Error deleting user.", http.StatusConflict)
+		return
+	}
+
+	logger.Info("User deleted")
+	utils.WriteJSON(w, http.StatusOK, &ActDeleted{
+		Deleted: deleted,
+	})
+}
+
+/* ---------- LOGIN ---------- */
 func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Login()")
 
@@ -116,23 +265,7 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 	api.writeTokenResponse(ctx, w, http.StatusOK, user, &credential.SessionData, true)
 }
 
-func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
-	logger := logrus.WithField("func", "users.go -> Get()")
-
-	vars := mux.Vars(r)
-	userID := models.UserID(vars["userID"])
-
-	ctx := r.Context()
-	user, err := api.DB.GetUserByID(ctx, &userID)
-	if err != nil {
-		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
-		return
-	}
-
-	logger.WithField("userID", userID).Debug("Get user complete")
-	utils.WriteJSON(w, http.StatusOK, user)
-}
-
+/* ---------- TOKEN ---------- */
 // RefreshTokenRequest - Data user send to get new access and refresh tokens.
 type RefreshTokenRequest struct {
 	RefreshToken string          `json:"refresh_token"`
@@ -177,7 +310,7 @@ func (api *UserAPI) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	logger.WithField("user_id", principal.UserID).Debug("Refresh token")
 
 	// Check if user exists
-	user, err := api.DB.GetUserByID(ctx, &principal.UserID)
+	user, err := api.DB.GetUserByID(ctx, principal.UserID)
 	if err != nil {
 		utils.ResponseErr(err, w, "Error getting user.", http.StatusConflict)
 		return

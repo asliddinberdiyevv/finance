@@ -2,8 +2,8 @@ package auth
 
 import (
 	"context"
-	"finance/internal/utils"
 	"finance/internal/models"
+	"finance/internal/utils"
 	"net/http"
 	"strings"
 
