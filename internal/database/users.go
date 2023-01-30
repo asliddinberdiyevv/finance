@@ -102,8 +102,7 @@ func (d *database) ListUsers(ctx context.Context) ([]*models.User, error) {
 
 var updateUserQuery = `
 	UPDATE users
-	SET email = :email,
-			password_hash = :password_hash
+	SET	password_hash = :password_hash
 	WHERE user_id = :user_id;
 `
 
@@ -127,6 +126,7 @@ var DeleteUserQuery = `
 			email = CONCAT(email, '-DELETED-', uuid_generate_v4())
 	WHERE user_id = $1 AND deleted_at IS NULL;
 `
+
 func (d *database) DeleteUser(ctx context.Context, userID models.UserID) (bool, error) {
 	result, err := d.conn.ExecContext(ctx, DeleteUserQuery, userID)
 	if err != nil {

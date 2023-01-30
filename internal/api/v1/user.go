@@ -26,11 +26,11 @@ func SetUserAPI(db database.Database, router *mux.Router, permissons auth.Permis
 
 	apis := []API{
 		/* ---------- USERS ---------- */
-		NewAPI("/users", "POST", api.Create, auth.Member),
+		NewAPI("/users", "POST", api.Create, auth.Any),
 		NewAPI("/users", "GET", api.List, auth.Admin),
 		NewAPI("/users/{userID}", "GET", api.Get, auth.Admin, auth.MemberIsTarget),
 		NewAPI("/users/{userID}", "PATCH", api.Update, auth.Admin, auth.MemberIsTarget),
-		NewAPI("/users/{userID}", "DELETE", api.Delete, auth.Admin),
+		NewAPI("/users/{userID}", "DELETE", api.Delete, auth.Admin, auth.MemberIsTarget),
 
 		/* ---------- LOGIN ---------- */
 		NewAPI("/login", "POST", api.Login, auth.Any),
@@ -54,7 +54,7 @@ type UserParameters struct {
 /* ---------- USERS ---------- */
 
 // POST - /users
-// Permission - Admin
+// Permission - Any
 func (api *UserAPI) Create(w http.ResponseWriter, r *http.Request) {
 	// show function name is logs to track error faster
 	logger := logrus.WithField("func", "users.go -> Create()")
@@ -136,7 +136,7 @@ func (api *UserAPI) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET - /users/{userID}
-// Permission - Admin
+// Permission - Admin, MemberIsTarget
 func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "users.go -> Get()")
 
@@ -155,7 +155,7 @@ func (api *UserAPI) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // PATCH - /users/{userID}
-// Permission - Admin
+// Permission - Admin, MemberIsTarget
 func (api *UserAPI) Update(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "user.go -> Update()")
 
@@ -182,10 +182,6 @@ func (api *UserAPI) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if userRequest.Email != nil || len(*userRequest.Email) != 0 {
-		user.Email = userRequest.Email
-	}
-
 	if len(userRequest.Password) != 0 {
 		if err := user.SetPassword(userRequest.Password); err != nil {
 			utils.ResponseErr(err, w, "Error setting password.", http.StatusInternalServerError)
@@ -204,7 +200,7 @@ func (api *UserAPI) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE - /users/{userID}
-// Permission - Admin
+// Permission - Admin, MemberIsTarget
 func (api *UserAPI) Delete(w http.ResponseWriter, r *http.Request) {
 	logger := logrus.WithField("func", "user.go -> Delete()")
 
@@ -257,7 +253,7 @@ func (api *UserAPI) Login(w http.ResponseWriter, r *http.Request) {
 
 	// Checking if password is correct
 	if err := user.CheckPassword(credential.Password); err != nil {
-		utils.ResponseErr(err, w, "Invalid email or password.", http.StatusConflict)
+		utils.ResponseErr(err, w, "Invalid email or password.", http.StatusUnauthorized)
 		return
 	}
 
