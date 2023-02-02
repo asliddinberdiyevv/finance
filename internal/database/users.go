@@ -20,7 +20,7 @@ type UsersDB interface {
 
 var ErrUserExists = errors.New("user with that email exists")
 
-var createUserQuery = `
+const createUserQuery = `
 	INSERT INTO users (
 		email, password_hash
 	)
@@ -29,7 +29,6 @@ var createUserQuery = `
 	)
 	RETURNING user_id
 `
-
 func (d *database) CreateUser(ctx context.Context, user *models.User) error {
 	rows, err := d.conn.NamedQueryContext(ctx, createUserQuery, user)
 	if rows != nil {
@@ -56,12 +55,11 @@ func (d *database) CreateUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-var getUserByIDQuery = `
+const getUserByIDQuery = `
 	SELECT user_id, email, password_hash, created_at
 	FROM users 
 	WHERE user_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) GetUserByID(ctx context.Context, userID models.UserID) (*models.User, error) {
 	var user models.User
 	if err := d.conn.GetContext(ctx, &user, getUserByIDQuery, userID); err != nil {
@@ -71,12 +69,11 @@ func (d *database) GetUserByID(ctx context.Context, userID models.UserID) (*mode
 	return &user, nil
 }
 
-var getUserByEmailQuery = `
+const getUserByEmailQuery = `
 	SELECT user_id, email, password_hash, created_at
 	FROM users 
 	WHERE email = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 	if err := d.conn.GetContext(ctx, &user, getUserByEmailQuery, email); err != nil {
@@ -86,12 +83,11 @@ func (d *database) GetUserByEmail(ctx context.Context, email string) (*models.Us
 	return &user, nil
 }
 
-var listUsersQuery = `
+const listUsersQuery = `
 	SELECT user_id, email, password_hash, created_at
 	FROM users
 	WHERE deleted_at IS NULL;
 `
-
 func (d *database) ListUsers(ctx context.Context) ([]*models.User, error) {
 	var users []*models.User
 	if err := d.conn.SelectContext(ctx, &users, listUsersQuery); err != nil {
@@ -100,12 +96,11 @@ func (d *database) ListUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-var updateUserQuery = `
+const updateUserQuery = `
 	UPDATE users
 	SET	password_hash = :password_hash
 	WHERE user_id = :user_id;
 `
-
 func (d *database) UpdateUser(ctx context.Context, user *models.User) error {
 	result, err := d.conn.NamedExecContext(ctx, updateUserQuery, user)
 	if err != nil {
@@ -120,13 +115,12 @@ func (d *database) UpdateUser(ctx context.Context, user *models.User) error {
 	return nil
 }
 
-var DeleteUserQuery = `
+const DeleteUserQuery = `
 	UPDATE users
 	SET deleted_at = NOW(),
 			email = CONCAT(email, '-DELETED-', uuid_generate_v4())
 	WHERE user_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) DeleteUser(ctx context.Context, userID models.UserID) (bool, error) {
 	result, err := d.conn.ExecContext(ctx, DeleteUserQuery, userID)
 	if err != nil {

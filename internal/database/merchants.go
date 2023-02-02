@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"finance/internal/models"
-	"fmt"
 
 	"github.com/pkg/errors"
 )
@@ -16,7 +15,7 @@ type MerchantDB interface {
 	DeleteMerchant(ctx context.Context, merchantID models.MerchantID) (bool, error)
 }
 
-var createMerchantQuery = `
+const createMerchantQuery = `
 	INSERT INTO merchants (user_id, name)
 	VALUES (:user_id, :name)
 	RETURNING merchant_id;
@@ -37,7 +36,7 @@ func (d *database) CreateMerchant(ctx context.Context, merchant *models.Merchant
 	return nil
 }
 
-var updateMerchantQuery = `
+const updateMerchantQuery = `
 	UPDATE merchants
 	SET name = :name
 	WHERE merchant_id = :merchant_id;
@@ -57,7 +56,7 @@ func (d *database) UpdateMerchant(ctx context.Context, merchant *models.Merchant
 	return nil
 }
 
-var getMerchantByIDQuery = `
+const getMerchantByIDQuery = `
 	SELECT merchant_id, user_id, name, created_at, deleted_at
 	FROM merchants
 	WHERE merchant_id = $1;
@@ -66,20 +65,16 @@ var getMerchantByIDQuery = `
 func (d *database) GetMerchantByID(ctx context.Context, merchantID models.MerchantID) (*models.Merchant, error) {
 	var merchant models.Merchant
 	if err := d.conn.GetContext(ctx, &merchant, getMerchantByIDQuery, merchantID); err != nil {
-		fmt.Println(err)
-		fmt.Println(err)
-		fmt.Println(err)
 		return nil, errors.Wrap(err, "could not get merchant")
 	}
 	return &merchant, nil
 }
 
-var listMerchantByIDQuery = `
+const listMerchantByIDQuery = `
 	SELECT merchant_id, user_id, name, created_at, deleted_at
 	FROM merchants
 	WHERE user_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) ListMerchantByUserID(ctx context.Context, userID models.UserID) ([]*models.Merchant, error) {
 	var merchants []*models.Merchant
 	if err := d.conn.SelectContext(ctx, &merchants, listMerchantByIDQuery, userID); err != nil {
@@ -88,12 +83,11 @@ func (d *database) ListMerchantByUserID(ctx context.Context, userID models.UserI
 	return merchants, nil
 }
 
-var DeleteMerchantQuery = `
+const DeleteMerchantQuery = `
 	UPDATE merchants
 	SET deleted_at = NOW()
 	WHERE merchant_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) DeleteMerchant(ctx context.Context, merchantID models.MerchantID) (bool, error) {
 	result, err := d.conn.ExecContext(ctx, DeleteMerchantQuery, merchantID)
 	if err != nil {

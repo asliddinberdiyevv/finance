@@ -15,12 +15,11 @@ type AccountDB interface {
 	DeleteAccount(ctx context.Context, accountID models.AccountID) (bool, error)
 }
 
-var createAccountQuery = `
+const createAccountQuery = `
 	INSERT INTO accounts (user_id, start_balance, account_type, account_name, currency)
 		VALUES (:user_id, :start_balance, :account_type, :account_name, :currency)
 	RETURNING account_id;
 `
-
 func (d *database) CreateAccount(ctx context.Context, account *models.Account) error {
 	rows, err := d.conn.NamedQueryContext(ctx, createAccountQuery, account)
 	if err != nil {
@@ -36,7 +35,7 @@ func (d *database) CreateAccount(ctx context.Context, account *models.Account) e
 	return nil
 }
 
-var UpdateAccountQuery = `
+const UpdateAccountQuery = `
 	UPDATE accounts
 		SET start_balance = :start_balance,
 				account_type = :account_type,
@@ -44,7 +43,6 @@ var UpdateAccountQuery = `
 				currency = :currency
 		WHERE account_id = :account_id;
 `
-
 func (d *database) UpdateAccount(ctx context.Context, account *models.Account) error {
 	result, err := d.conn.NamedExecContext(ctx, UpdateAccountQuery, account)
 	if err != nil {
@@ -59,12 +57,11 @@ func (d *database) UpdateAccount(ctx context.Context, account *models.Account) e
 	return nil
 }
 
-var getAccountByIDQuery = `
+const getAccountByIDQuery = `
 	SELECT account_id, user_id, start_balance, account_type, account_name, currency, created_at, deleted_at
 	FROM accounts
 	WHERE account_id = $1;
 `
-
 func (d *database) GetAccountByID(ctx context.Context, accountID models.AccountID) (*models.Account, error) {
 	var account models.Account
 	if err := d.conn.GetContext(ctx, &account, getAccountByIDQuery, accountID); err != nil {
@@ -74,12 +71,11 @@ func (d *database) GetAccountByID(ctx context.Context, accountID models.AccountI
 	return &account, nil
 }
 
-var listAccountByIDQuery = `
+const listAccountByIDQuery = `
 	SELECT account_id, user_id, start_balance, account_type, account_name, currency, created_at, deleted_at
 	FROM accounts
 	WHERE user_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) ListAccountByUserID(ctx context.Context, userID models.UserID) ([]*models.Account, error) {
 	var accounts []*models.Account
 	if err := d.conn.SelectContext(ctx, &accounts, listAccountByIDQuery, userID); err != nil {
@@ -89,12 +85,11 @@ func (d *database) ListAccountByUserID(ctx context.Context, userID models.UserID
 	return accounts, nil
 }
 
-var DeleteAccountQuery = `
+const DeleteAccountQuery = `
 	UPDATE accounts
 	SET deleted_at = NOW()
 	WHERE account_id = $1 AND deleted_at IS NULL;
 `
-
 func (d *database) DeleteAccount(ctx context.Context, accountID models.AccountID) (bool, error) {
 	result, err := d.conn.ExecContext(ctx, DeleteAccountQuery, accountID)
 	if err != nil {
@@ -107,5 +102,4 @@ func (d *database) DeleteAccount(ctx context.Context, accountID models.AccountID
 	}
 
 	return rows > 0, nil
-
 }

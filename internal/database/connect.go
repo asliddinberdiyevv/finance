@@ -2,21 +2,37 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/joho/godotenv"
 	"github.com/namsral/flag"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	databaseURL     = flag.String("database-url", "postgres://postgres:asgu@2409@localhost:5432/postgres?sslmode=disable", "Database URL.")
 	databaseTimeout = flag.Int64("database-timeout-ms", 5000, "")
 )
 
 // Connect creates a new database connection
 func Connect() (*sqlx.DB, error) {
+
+	if err := godotenv.Load(); err != nil {
+		fmt.Println(err)
+	}
+
+	username := os.Getenv("DB_USERNAME")
+	password := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	var databaseURL = flag.String("database-url", "postgres://" + username +":"+ password +"@"+ dbHost +":"+ dbPort +"/"+ 
+	dbName +"?sslmode=disable", "Database URL.")
+
 	// Connect to database:
 	dbURL := *databaseURL
 

@@ -17,6 +17,7 @@ type Database interface {
 	AccountDB
 	CategoryDB
 	MerchantDB
+	TransactionDB
 
 	io.Closer
 }
