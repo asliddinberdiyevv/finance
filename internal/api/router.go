@@ -23,6 +23,7 @@ func NewRouter(db database.Database) (http.Handler, error) {
 	v1.SetCategoryAPI(db, apiRouter, permissons)
 	v1.SetAccountAPI(db, apiRouter, permissons)
 	v1.SetMerchantAPI(db, apiRouter, permissons)
+	v1.SetTransactionAPI(db, apiRouter, permissons)
 
 	/* ---------- MIDDLEWARE ---------- */
 	router.Use(auth.AuthorizationToken)

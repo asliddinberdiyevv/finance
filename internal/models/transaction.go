@@ -32,7 +32,7 @@ type Transaction struct {
 	Date   *time.Time       `json:"date" db:"transaction_date"`
 	Type   *TransactionType `json:"type" db:"transaction_type"`
 	Amount *int64           `json:"amount" db:"amount"`
-	Notes  string           `json:"notes,omitempty" db:"notes"`
+	Notes  *string           `json:"notes,omitempty" db:"notes"`
 }
 
 func (c *Transaction) Verify() error {

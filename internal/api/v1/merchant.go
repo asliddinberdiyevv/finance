@@ -6,7 +6,6 @@ import (
 	"finance/internal/database"
 	"finance/internal/models"
 	"finance/internal/utils"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -68,9 +67,6 @@ func (api *MerchantAPI) Create(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// Store role in database
 
-	fmt.Println()
-	fmt.Println(merchant.UserID)
-	fmt.Println()
 	if err := api.DB.CreateMerchant(ctx, &merchant); err != nil {
 		logger.WithError(err).Warn("Error creating merchant.")
 		utils.WriteError(w, http.StatusInternalServerError, "Error creating merchant.", nil)
