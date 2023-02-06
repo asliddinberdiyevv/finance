@@ -4,8 +4,11 @@ import (
 	"finance/internal/api"
 	"finance/internal/config"
 	"finance/internal/database"
+	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/namsral/flag"
 	"github.com/sirupsen/logrus"
@@ -14,6 +17,10 @@ import (
 // Create server object and start
 func main() {
 	flag.Parse()
+
+	if err := godotenv.Load(); err != nil {
+		fmt.Println(err)
+	}
 
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.WithField("version", config.Version).Debug("Starting server.")
@@ -33,7 +40,7 @@ func main() {
 		logrus.WithError(err).Fatal("Error building router")
 	}
 
-	const addr = "0.0.0.0:8888"
+	var addr = "0.0.0.0" + ":" + os.Getenv("APP_PORT")
 	server := http.Server{
 		Handler: router,
 		Addr:    addr,
