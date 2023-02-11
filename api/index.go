@@ -40,7 +40,7 @@ func main() {
 		logrus.WithError(err).Fatal("Error building router")
 	}
 
-	var addr = "0.0.0.0" + ":" + os.Getenv("APP_PORT")
+	var addr = ":" + os.Getenv("APP_PORT")
 	server := http.Server{
 		Handler: router,
 		Addr:    addr,
@@ -50,4 +50,8 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logrus.WithError(err).Error("Server failed.")
 	}
+}
+
+func New() {
+	panic("unimplemented")
 }
